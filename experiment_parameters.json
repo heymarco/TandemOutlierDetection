@@ -1,0 +1,10 @@
+{
+  "name": "xyz",
+  "clients": 30,
+  "inter_client_variance": 0.1,
+  "num_po": 1,
+  "shift": 0.1,
+  "nobs": 1000,
+  "num_same_parameters": 10,
+
+}

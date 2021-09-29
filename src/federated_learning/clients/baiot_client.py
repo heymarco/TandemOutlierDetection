@@ -17,8 +17,8 @@ class OneLayerAutoencoder(nn.Module):
     def __init__(self):
         super(OneLayerAutoencoder, self).__init__()
         dim = 115
-        enc_size = int(0.7*dim)
-        self.drop_layer = nn.Dropout(p=0.2)
+        enc_size = int(0.4*dim)
+        self.drop_layer = nn.Dropout(p=0.1)
         self.enc = nn.Linear(in_features=dim, out_features=enc_size)
         self.dec = nn.Linear(in_features=enc_size, out_features=dim)
 

@@ -29,7 +29,7 @@ def __melbourne_data_loader__(batch_size: int = 64):
                     "humidity_max", "humidity_min", "humidity_avg"]
 
     x = data[data_columns].values.T  # returns a numpy array
-    min_max_scaler = preprocessing.MinMaxScaler()
+    min_max_scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
     x_scaled = min_max_scaler.fit_transform(x.T)
     data_normed = data.copy()
     data_normed[data_columns] = pd.DataFrame(x_scaled, columns=data_columns)
@@ -52,6 +52,6 @@ def __melbourne_data_loader__(batch_size: int = 64):
              torch.utils.data.DataLoader(dataset=ds, batch_size=batch_size, shuffle=False)) for ds in datasets]
 
 
-def load_melbourne_partition(index: int):
+def load_melbourne_partition(index: int, *args, **kwargs):
     return __melbourne_data_loader__()[index]
 

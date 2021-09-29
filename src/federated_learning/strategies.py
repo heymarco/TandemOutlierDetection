@@ -72,7 +72,6 @@ class TandemStrategy(FedAvg):
             if self.to_csv:
                 save_outlier_scores(client_indices=client_indices, os_federated=os_federated, os_ondevice=os_ondevice,
                                     labels=labels, exp_repetition=self.exp_repetition)
-            # if last round and we saved the outlier scores: terminate
         return None
 
 
@@ -138,5 +137,4 @@ class TandemAdagrad(FedAdagrad):
             if self.to_csv:
                 save_outlier_scores(client_indices=client_indices, os_federated=os_federated, os_ondevice=os_ondevice,
                                     labels=labels, exp_repetition=self.exp_repetition)
-            # if last round and we saved the outlier scores: terminate
         return None

@@ -18,8 +18,8 @@ class OneLayerAutoencoder(nn.Module):
         self.dec = nn.Linear(in_features=4, out_features=9)
 
     def forward(self, x):
-        x = F.relu(self.enc(x))
-        x = torch.relu(self.dec(x))
+        x = torch.relu(self.enc(x))
+        x = torch.tanh(self.dec(x))
         return x
 
 
@@ -54,5 +54,6 @@ class MelbourneSensorDataClient(fl.client.NumPyClient):
         return float(np.mean(os_federated)), len(self.testloader), {
             "os_federated": np.array(os_federated, dtype=float).tobytes(),
             "os_ondevice": np.array(os_ondevice, dtype=float).tobytes(),
-            "labels": str(labels)
+            "labels": str(labels),
+            "client_index": self.client_index
         }

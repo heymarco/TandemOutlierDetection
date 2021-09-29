@@ -12,7 +12,7 @@ done
 trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT
 
 for i in $(seq 0 $((reps-1))); do
-    bash bash/start_simulation.sh -t "$type" -r "$rounds" -e "$i" -w 1
+    bash bash/start_simulation.sh -t "$type" -r "$rounds" -e "$i" -w 1 -R "$reps"
     pids[$((i+1))]=$!
   done
 

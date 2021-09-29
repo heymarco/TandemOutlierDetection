@@ -28,6 +28,8 @@ def get_min_max():
         file = pd.read_csv(path_to_file)
         data = file if data is None else pd.concat([data, file])
     data = data.to_numpy()
+    print("mean: {}".format(np.mean(data)))
+    print("95th perc.: {}".format(np.percentile(data, 95)))
     print("minimum: {}".format(np.min(data)))
     print("maximum: {}".format(np.max(data)))
 
@@ -59,10 +61,10 @@ def load_data(index: int, contamination: float = 0.001) -> pd.DataFrame:
         if "benign" in filename:
             inlier_data = file if inlier_data is None else pd.concat([inlier_data, file])
         else:
-            outlier_data = file if outlier_data is None else pd.concat([outlier_data, file])
+            outlier_data = file.iloc[:2000] if outlier_data is None else pd.concat([outlier_data, file.iloc[:2000]])
     inlier_data.reset_index(drop=True, inplace=True)
     nobs = len(inlier_data)
-    nout = int(nobs * contamination) if index == 1 else int(nobs * contamination)
+    nout = int(nobs * contamination)
     outlier_data.reset_index(drop=True, inplace=True)
     final_dataframe = pd.concat([
         inlier_data,
@@ -117,5 +119,5 @@ def __baiot_data_loader__(index: int, batch_size: int = 64):
     return train_loader, test_loader
 
 
-def load_baiot_partition(index: int):
+def load_baiot_partition(index: int, *args, **kwargs):
     return __baiot_data_loader__(index+1)

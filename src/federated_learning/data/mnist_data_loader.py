@@ -19,11 +19,12 @@ def get_data_for_index(x: np.ndarray, y: np.ndarray, i: int, contamination: floa
     global_outlier_indices = [index for index, label in enumerate(y) if label == 9]
 
     local_outlier_indices = np.random.choice(local_outlier_indices,
-                                             int(len(local_outlier_indices) * contamination),
+                                             int(len(x_normal) * contamination),
                                              replace=False)
     global_outlier_indices = np.random.choice(global_outlier_indices,
-                                              int(len(global_outlier_indices) * contamination),
+                                              int(len(x_normal) * contamination),
                                               replace=False)
+
     x_local = x[local_outlier_indices]
     y_local = np.ones(len(local_outlier_indices), dtype=int)
     x_global = x[global_outlier_indices]
@@ -54,29 +55,34 @@ class MnistDataset(torch.utils.data.Dataset):
         return sample, label
 
 
-def __mnist_data_loader__(batch_size: int = 64, random_seed: int = 0):
+def __mnist_data_loader__(batch_size: int = 64, random_seed: int = 0, num_clients: int = 8):
+    (x_train, y_train), _ = keras.datasets.mnist.load_data()
+    x_full = x_train
+    y_full = y_train
 
-    (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
-    x = x_train
-    y = y_train
-
-    shuffled_indices = np.array([i for i in range(len(y))])
+    shuffled_indices = np.array([i for i in range(len(y_full)) if y_full[i] != 8])
     np.random.RandomState(random_seed).shuffle(shuffled_indices)
 
-    # create 8 clients
-    num_clients = 8
-    num_data_per_client = int(len(x) / num_clients)
-    x = [x[i*num_data_per_client: (i + 1)*num_data_per_client] for i in range(num_clients)]
-    y = [y[i * num_data_per_client: (i + 1) * num_data_per_client] for i in range(num_clients)]
-    federated_data = [get_data_for_index(x[i], y[i], i) for i in range(num_clients)]
+    x = x_full[shuffled_indices]
+    y = y_full[shuffled_indices]
 
-    base_transforms_list = [
-        # transforms.ToPILImage(),
-        # transforms.RandomRotation(90, fill=(0,)),
-        # transforms.Pad(padding=4),
-        # transforms.RandomResizedCrop(28, scale=(0.8, 1.0)),
-        transforms.ToTensor(),
-    ]
+    num_data_per_client = int(len(x) / num_clients)
+    x_split = [x[i * num_data_per_client: (i + 1) * num_data_per_client] for i in range(num_clients)]
+    y_split = [y[i * num_data_per_client: (i + 1) * num_data_per_client] for i in range(num_clients)]
+    federated_data = [get_data_for_index(x_split[i], y_split[i], i) for i in range(num_clients)]
+
+    def make_partition_outlier(x, y, x_full, y_full, label, percentage):
+        po_indices = [i for i in range(len(y_full)) if y_full[i] == label]
+        num_changes = int(len(y)*percentage)
+        po_indices = np.random.RandomState(random_seed).choice(po_indices, num_changes, replace=False)
+        x[:num_changes] = x_full[po_indices]
+        y[:num_changes] = y_full[po_indices]
+        return x, y
+
+    federated_data[-1] = make_partition_outlier(federated_data[-1][0], federated_data[-1][1], x_full, y_full,
+                                                num_clients-1, 0.3)
+
+    base_transforms_list = [transforms.ToTensor()]
     base_transform = transforms.Compose(base_transforms_list)
     datasets = [MnistDataset(data=tpl[0], transform=base_transform, labels=tpl[1])
                 for tpl in federated_data]
@@ -84,6 +90,5 @@ def __mnist_data_loader__(batch_size: int = 64, random_seed: int = 0):
              torch.utils.data.DataLoader(dataset=ds, batch_size=batch_size, shuffle=False)) for ds in datasets]
 
 
-def load_mnist_partition(index: int):
+def load_mnist_partition(index: int, *args, **kwargs):
     return __mnist_data_loader__()[index]
-

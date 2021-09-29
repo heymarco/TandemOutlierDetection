@@ -110,5 +110,5 @@ def __arculus_data_loader__(index: int, batch_size: int = 64):
     return train_loader, test_loader
 
 
-def load_arculus_partition(index: int):
+def load_arculus_partition(index: int, *args, **kwargs):
     return __arculus_data_loader__(index)
