@@ -1,7 +1,7 @@
 import copy
 import os
 import sys
-from sklearn.metrics import precision_recall_curve, auc
+from sklearn.metrics import precision_recall_curve
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -9,7 +9,7 @@ import seaborn as sns
 from tqdm import tqdm
 
 sys.path.insert(0, ".")
-from src.helper import get_point_outliers, server_evaluation, tandem_precision_recall_curve
+from src.helper import get_point_outliers, server_evaluation, tandem_precision_recall_curve, move_legend_below_graph
 
 import matplotlib as mpl
 
@@ -109,59 +109,6 @@ def plot_outlier_scores(thresh: float = 96.0):
     plt.show()
 
 
-def plot_outlier_scores_over_distance(thresh: float = 99.0):
-    sns.set_palette(["#000000"])
-    filepath = os.path.join(os.getcwd(), "results", "result.csv")
-    raw_data = pd.read_csv(filepath)
-    raw_data["task"] = "A"
-    raw_data["task"][np.logical_and(raw_data["client"] >= 10, raw_data["client"] < 20)] = "both"
-    raw_data["task"][raw_data["client"] > 20] = "B"
-    raw_data_cpy = copy.deepcopy((raw_data))
-    raw_data["score"] = raw_data["os_ondevice"]
-    raw_data["det."] = r"$L$"
-    raw_data_cpy["score"] = raw_data_cpy["os_federated"]
-    raw_data_cpy["det."] = r"$F$"
-    raw_data = pd.concat((raw_data, raw_data_cpy))
-    raw_data[r"$\delta$"] = raw_data["labels"]
-    raw_data.sort_values(by="task", inplace=True)
-    relevant_data = raw_data[raw_data["labels"] != -1]
-    g = sns.FacetGrid(data=relevant_data, col="det.", row="task", sharey=False, sharex=True)
-    g.map_dataframe(sns.lineplot, x=r"$\delta$", y="score")
-
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_outlier_scores_over_distance_vertical(thresh: float = 99.0):
-    sns.set_palette(["#000000"])
-    fig = plt.figure(figsize=(3, 4))
-    subfigs = fig.subfigures(nrows=3, ncols=1)
-    filepath = os.path.join(os.getcwd(), "results", "result.csv")
-    raw_data = pd.read_csv(filepath)
-
-    def plot_data(subfig, data, title):
-        axes = subfig.subplots(nrows=1, ncols=2, sharex=True, sharey=False)
-        graph_data = data[data["labels"] != -1]
-        sns.lineplot(data=graph_data, x="labels", y="os_ondevice", ci=None, ax=axes[0])
-        sns.lineplot(data=graph_data, x="labels", y="os_federated", ci=None, ax=axes[1])
-        subfig.suptitle(title)
-        axes[0].set_ylabel(r"$os^L$")
-        axes[1].set_ylabel(r"$os^F$")
-
-    # first set of devices
-    # plot_schema_2d(axes[0])
-    relevant_data = raw_data[raw_data["client"] < 10]
-    plot_data(subfigs[0], relevant_data, "Task A")
-    # second set of devices
-    relevant_data = raw_data[np.logical_and(raw_data["client"] >= 10, raw_data["client"] < 20)]
-    plot_data(subfigs[1], relevant_data, "Task A and B")
-    # third set of devices
-    relevant_data = raw_data[raw_data["client"] >= 20]
-    plot_data(subfigs[2], relevant_data, "Task B")
-    plt.tight_layout()
-    plt.show()
-
-
 def plot_partition_outliers_over_shift_distance():
     sns.set_palette(sns.cubehelix_palette(2))
     filepath = os.path.join(os.getcwd(), "results", "results_po_1000.csv")
@@ -211,487 +158,6 @@ def plot_partition_outliers_over_shift_distance():
     axes[1].set_yscale("log")
     axes[1].legend()
     plot_schema_2d_partition_outlier(axes[0])
-    plt.show()
-
-
-def plot_evaluation_vary_nobs(filename: str = "synth_po_vary_nobs_10reps.csv"):
-    # sns.set_palette(sns.color_palette("colorblind", n_colors=4))
-    cached_path = os.path.join("results", "cache", filename)
-    latex_columns = ["repetition", "client", r"$os^*_i$", r"$os_o$", "shift", r"$|db_i|$", "is PO", r"$p$-val"]
-    if not os.path.exists(cached_path):
-        print("Load file...")
-        filepath = os.path.join(os.getcwd(), "results", filename)
-        raw_data = pd.read_csv(filepath)
-        print("File loaded; extracting data...")
-
-        steps = 10
-        nobs = []
-        repetitions_with_same_params = 10
-        for rep in raw_data["repetition"]:
-            counter_for_params = int(rep / repetitions_with_same_params)
-            nobs.append([100, 300, 1000, 3000][int(counter_for_params / steps)])
-        is_outlier = []
-        for client in raw_data["client"]:
-            is_outlier.append(client == 0)
-        raw_data["nobs"] = nobs
-        raw_data["is po"] = is_outlier
-
-        raw_data.sort_values(by=["repetition", "client"], inplace=True)
-        grouped_by_repetition = raw_data.groupby(by="repetition")
-        p_values = []
-        for id, group in tqdm(grouped_by_repetition):
-            os_federated = []
-            number_of_observations = len(group[group["client"] == 0])
-            for client, client_data in group.groupby(by="client"):
-                os_federated.append(client_data["os_federated"])
-                # hacky: we need to adjust labels for the plot! todo: fix it in code
-                bool_array = np.logical_and(raw_data["repetition"] == id, raw_data["client"] == client)
-                raw_data.loc[bool_array, "labels"] = np.array(group.loc[group["client"] == 0, "labels"])
-            result = server_evaluation(os_federated)[1]
-            result = np.expand_dims(result, 1).repeat(number_of_observations, 1)
-            p_values += list(result.flatten())
-
-        raw_data["p"] = p_values
-        raw_data = raw_data.groupby(["repetition", "client"]).mean().reset_index()
-        raw_data.columns = latex_columns
-        raw_data.to_csv(cached_path, index=False)
-    else:
-        print("Using cache...")
-        raw_data = pd.read_csv(cached_path)
-    print(raw_data)
-    raw_data.columns = latex_columns
-    print("Extraction completed; plotting data...")
-    fig, axes = plt.subplots(1, 2, sharex=True, sharey=False)
-    sns.lineplot(data=raw_data, x="shift", y=r"$os^*_i$", hue=r"$|db_i|$", ax=axes[0],
-                 style="is PO", palette=sns.cubehelix_palette(n_colors=4))
-    sns.lineplot(data=raw_data, x="shift", y=r"$p$-val", hue=r"$|db_i|$", ax=axes[1],
-                 style="is PO", palette=sns.cubehelix_palette(n_colors=4))
-
-    fig.set_size_inches(figsize)
-    move_legend_below_graph(axes, ncol=8)
-    axes[-1].set_yscale('log')
-    plt.show()
-
-
-def plot_evaluation_vary_affected_dims(filename: str = "synth_po_vary_dims_10reps.csv"):
-    # sns.set_palette(sns.color_palette("colorblind", n_colors=4))
-    cached_path = os.path.join("results", "cache", filename)
-    latex_columns = ["repetition", "client", r"$os^*_i$", r"$os_o$", "shift", "dims", "is PO", r"$p$-val"]
-    if not os.path.exists(cached_path):
-        print("Load file...")
-        filepath = os.path.join(os.getcwd(), "results", filename)
-        raw_data = pd.read_csv(filepath)
-        print("File loaded; extracting data...")
-
-        steps = 10
-        affected_dims = []
-        repetitions_with_same_params = 10
-        for rep in raw_data["repetition"]:
-            counter_for_params = int(rep / repetitions_with_same_params)
-            affected_dims.append([0.1, 0.3, 0.6, 1.0][int(counter_for_params / steps)])
-        is_outlier = []
-        for client in raw_data["client"]:
-            is_outlier.append(client == 0)
-        raw_data["dims"] = affected_dims
-        raw_data["is po"] = is_outlier
-
-        raw_data.sort_values(by=["repetition", "client"], inplace=True)
-        grouped_by_repetition = raw_data.groupby(by="repetition")
-        p_values = []
-        for id, group in tqdm(grouped_by_repetition):
-            os_federated = []
-            number_of_observations = len(group[group["client"] == 0])
-            for client, client_data in group.groupby(by="client"):
-                os_federated.append(client_data["os_federated"])
-                # hacky: we need to adjust labels for the plot! todo: fix it in code
-                bool_array = np.logical_and(raw_data["repetition"] == id, raw_data["client"] == client)
-                raw_data.loc[bool_array, "labels"] = np.array(group.loc[group["client"] == 0, "labels"])
-            result = server_evaluation(os_federated)[1]
-            result = np.expand_dims(result, 1).repeat(number_of_observations, 1)
-            p_values += list(result.flatten())
-
-        raw_data["p"] = p_values
-        raw_data = raw_data.groupby(["repetition", "client"]).mean().reset_index()
-        raw_data.to_csv(cached_path, index=False)
-    else:
-        print("Using cache...")
-        raw_data = pd.read_csv(cached_path)
-    print("Extraction completed; plotting data...")
-    raw_data.columns = latex_columns
-    raw_data = raw_data.round({"dims": 1})
-    fig, axes = plt.subplots(1, 2, sharex=True, sharey=False)
-    sns.lineplot(data=raw_data, x="shift", y=r"$os^*_i$", hue="dims", ax=axes[0],
-                 style="is PO", palette=sns.cubehelix_palette(n_colors=4))
-    sns.lineplot(data=raw_data, x="shift", y=r"$p$-val", hue="dims", ax=axes[1],
-                 style="is PO", palette=sns.cubehelix_palette(n_colors=4))
-
-    fig.set_size_inches(figsize)
-    move_legend_below_graph(axes, ncol=8)
-    axes[-1].set_yscale('log')
-    plt.show()
-
-
-def plot_evaluation_vary_number_pos(filename: str = "synth_po_vary_npo_10reps.csv"):
-    # sns.set_palette(sns.color_palette("colorblind", n_colors=4))
-    cached_path = os.path.join("results", "cache", filename)
-    latex_columns = ["repetition", "client", r"$os^*_i$", r"$os_o$", "shift", "dims", r"\#PO", "is PO", r"$p$-val"]
-    if not os.path.exists(cached_path):
-        print("Load file...")
-        filepath = os.path.join(os.getcwd(), "results", filename)
-        raw_data = pd.read_csv(filepath)
-        print("File loaded; extracting data...")
-
-        steps = 4
-        repetitions_with_same_params = 10
-        affected_dims = []
-        is_outlier = []
-        num_po = []
-        for rep in raw_data["repetition"]:
-            counter_for_params = int(rep / repetitions_with_same_params)
-            affected_dims.append([0.1, 0.3, 0.6, 1.0][int(counter_for_params % steps)])
-            num_po.append([0, 1, 3, 6, 10, 20, 25, 30][int(counter_for_params / steps)])
-
-        raw_data["dims"] = affected_dims
-        raw_data["#PO"] = num_po
-        for i, row in raw_data.iterrows():
-            number_of_partition_outliers = num_po[i]
-            client = row["client"]
-            is_outlier.append(client < number_of_partition_outliers)
-        raw_data["is po"] = is_outlier
-
-        raw_data.sort_values(by=["repetition", "client"], inplace=True)
-        grouped_by_repetition = raw_data.groupby(by="repetition")
-        p_values = []
-        for id, group in tqdm(grouped_by_repetition):
-            os_federated = []
-            number_of_observations = len(group[group["client"] == 0])
-            for client, client_data in group.groupby(by="client"):
-                os_federated.append(client_data["os_federated"])
-                # hacky: we need to adjust labels for the plot! todo: fix it in code
-                bool_array = np.logical_and(raw_data["repetition"] == id, raw_data["client"] == client)
-                raw_data.loc[bool_array, "labels"] = np.array(group.loc[group["client"] == 0, "labels"])
-            result = server_evaluation(os_federated)[1]
-            result = np.expand_dims(result, 1).repeat(number_of_observations, 1)
-            p_values += list(result.flatten())
-
-        raw_data["p"] = p_values
-        raw_data = raw_data.groupby(["repetition", "client"]).mean().reset_index()
-        raw_data.to_csv(cached_path, index=False)
-    else:
-        print("Using cache...")
-        raw_data = pd.read_csv(cached_path)
-    print("Extraction completed; plotting data...")
-    raw_data.columns = latex_columns
-    raw_data = raw_data.round({"dims": 1})
-    print(raw_data)
-    fig, axes = plt.subplots(1, 2, sharex=True, sharey=False)
-    sns.lineplot(data=raw_data, x=r"\#PO", y=r"$os^*_i$", hue="dims", ax=axes[0],
-                 style="is PO", palette=sns.cubehelix_palette(n_colors=4))
-    sns.lineplot(data=raw_data, x=r"\#PO", y=r"$p$-val", hue="dims", ax=axes[1],
-                 style="is PO", palette=sns.cubehelix_palette(n_colors=4))
-
-    fig.set_size_inches(figsize)
-    move_legend_below_graph(axes, ncol=8)
-    axes[-1].set_yscale('log')
-    plt.show()
-
-
-def plot_evaluation_vary_inter_partition_divergence(filename: str = "synth_po_vary_divergence_10reps.csv"):
-    cached_path = os.path.join(os.getcwd(), "results", "cache", filename)
-    latex_columns = ["repetition", "client", r"$os^*_i$", r"$os_o$", "shift", "dims", "is PO", r"$\Delta$", r"$p$-val"]
-    if not os.path.exists(cached_path):
-        print("Load file...")
-        filepath = os.path.join("results", filename)
-        raw_data = pd.read_csv(filepath)
-        print("File loaded; extracting data...")
-
-        steps = 10
-        affected_dims = []
-        repetitions_with_same_params = 10
-        variance = []
-        for rep in raw_data["repetition"]:
-            counter_for_params = int(rep / repetitions_with_same_params)
-            affected_dims.append([0.1, 0.3, 0.6, 1.0][int(counter_for_params / steps)])
-            variance.append((counter_for_params % steps) / (steps - 1))
-        is_outlier = []
-        for client in raw_data["client"]:
-            is_outlier.append(client == 0)
-        raw_data["dims"] = affected_dims
-        raw_data["is po"] = is_outlier
-        raw_data["variance"] = variance
-
-        raw_data.sort_values(by=["repetition", "client"], inplace=True)
-        grouped_by_repetition = raw_data.groupby(by="repetition")
-        p_values = []
-        for id, group in tqdm(grouped_by_repetition):
-            os_federated = []
-            number_of_observations = len(group[group["client"] == 0])
-            for client, client_data in group.groupby(by="client"):
-                os_federated.append(client_data["os_federated"])
-                # hacky: we need to adjust labels for the plot! todo: fix it in code
-                bool_array = np.logical_and(raw_data["repetition"] == id, raw_data["client"] == client)
-                raw_data.loc[bool_array, "labels"] = np.array(group.loc[group["client"] == 0, "labels"])
-            result = server_evaluation(os_federated)[1]
-            result = np.expand_dims(result, 1).repeat(number_of_observations, 1)
-            p_values += list(result.flatten())
-
-        raw_data["p"] = p_values
-        raw_data = raw_data.groupby(["repetition", "client"]).mean().reset_index()
-        raw_data.to_csv(cached_path, index=False)
-    else:
-        print("Using cache...")
-        raw_data = pd.read_csv(cached_path)
-    print("Extraction completed; plotting data...")
-    raw_data.columns = latex_columns
-    raw_data = raw_data.round({"dims": 1})
-    fig, axes = plt.subplots(1, 2, sharex=True, sharey=False)
-    sns.lineplot(data=raw_data, x=r"$\Delta$", y=r"$os^*_i$", hue="dims", ax=axes[0],
-                 style="is PO", palette=sns.cubehelix_palette(n_colors=4))
-    sns.lineplot(data=raw_data, x=r"$\Delta$", y=r"$p$-val", hue="dims", ax=axes[1],
-                 style="is PO", palette=sns.cubehelix_palette(n_colors=4))
-
-    fig.set_size_inches(figsize)
-    move_legend_below_graph(axes, ncol=8)
-    axes[-1].set_yscale('log')
-    plt.show()
-
-
-def plot_evaluation_vary_num_clients(filename: str = "result.csv"):
-    cached_path = os.path.join(os.getcwd(), "results", "cache", filename)
-    latex_columns = ["repetition", "client", r"$os^*_i$", r"$os_o$", "shift", r"$\Delta$", "is PO", r"$|N|$",
-                     r"$p$-val"]
-    if not os.path.exists(cached_path):
-        print("Load file...")
-        filepath = os.path.join("results", filename)
-        raw_data = pd.read_csv(filepath)
-        print("File loaded; extracting data...")
-
-        steps = 10
-        variance = []
-        repetitions_with_same_params = 10
-        num_clients = []
-        for rep in raw_data["repetition"]:
-            counter_for_params = int(rep / repetitions_with_same_params)
-            variance.append([0.0, 0.2, 0.4, 0.6][int(counter_for_params % 4)])
-            num_clients.append([2, 3, 4, 6, 8, 12, 15, 20, 25, 30][int(counter_for_params / 4)])
-        is_outlier = []
-        for client in raw_data["client"]:
-            is_outlier.append(client == 0)
-        raw_data["variance"] = variance
-        raw_data["is po"] = is_outlier
-        raw_data[r"$|N|$"] = num_clients
-
-        raw_data.sort_values(by=["repetition", "client"], inplace=True)
-        grouped_by_repetition = raw_data.groupby(by="repetition")
-        p_values = []
-        for id, group in tqdm(grouped_by_repetition):
-            os_federated = []
-            number_of_observations = len(group[group["client"] == 0])
-            for client, client_data in group.groupby(by="client"):
-                os_federated.append(client_data["os_federated"])
-                # hacky: we need to adjust labels for the plot! todo: fix it in code
-                bool_array = np.logical_and(raw_data["repetition"] == id, raw_data["client"] == client)
-                raw_data.loc[bool_array, "labels"] = np.array(group.loc[group["client"] == 0, "labels"])
-            print(result)
-            result = server_evaluation(os_federated)[1]
-            result = np.expand_dims(result, 1).repeat(number_of_observations, 1)
-            p_values += list(result.flatten())
-
-        raw_data["p"] = p_values
-        raw_data = raw_data.groupby(["repetition", "client"]).mean().reset_index()
-        raw_data.to_csv(cached_path, index=False)
-    else:
-        print("Using cache...")
-        raw_data = pd.read_csv(cached_path)
-    print("Extraction completed; plotting data...")
-    raw_data.columns = latex_columns
-    print(np.unique(raw_data[r"$\Delta$"]))
-    raw_data = raw_data.round({"dims": 1})
-    raw_data[r"$\Delta$"] = np.round(raw_data[r"$\Delta$"], 1)
-    fig, axes = plt.subplots(1, 2, sharex=True, sharey=False)
-    sns.lineplot(data=raw_data, x=r"$|N|$", y=r"$os^*_i$", hue=r"$\Delta$", ax=axes[0],
-                 style="is PO", palette=sns.cubehelix_palette(n_colors=4))
-    sns.lineplot(data=raw_data, x=r"$|N|$", y=r"$p$-val", hue=r"$\Delta$", ax=axes[1],
-                 style="is PO", palette=sns.cubehelix_palette(n_colors=4))
-
-    fig.set_size_inches(figsize)
-    move_legend_below_graph(axes, ncol=8)
-    axes[-1].set_yscale('log')
-    plt.show()
-
-
-def plot_roc_curves():
-    sns.set_palette(sns.cubehelix_palette(n_colors=3))
-    filepath = os.path.join(os.getcwd(), "results", "result.csv")
-    raw_data = pd.read_csv(filepath)
-
-    # create labels
-    raw_data["shift"] = raw_data["labels"].to_numpy()
-    thresh = 96
-
-    def change_label(x):
-        client = x["client"]
-        shift = x["shift"]
-        # Caution: These thresholds come from the way we generate data.
-        lower_thresh = 1 / 3
-        higher_thresh = 2 / 3
-        if shift == -1:
-            # inliers
-            label = 0
-        elif lower_thresh < shift < higher_thresh:
-            # global outliers
-            label = 2
-        else:
-            # local outliers
-            if 10 <= client < 20:
-                label = 0
-            else:
-                is_local_outlier = (client < 10 and shift >= higher_thresh) or (client >= 20 and shift <= lower_thresh)
-                label = 1 if is_local_outlier else 0
-        x["labels"] = label
-        return x
-
-    # for key, data in raw_data.groupby(by="repetition"):
-    #     raw_data[raw_data["repetition"] == key] = data.apply(change_label, axis=1)
-
-    raw_data["global"] = raw_data["labels"] == 2
-    raw_data["local"] = raw_data["labels"] == 1
-    raw_data["outlier"] = np.logical_or(raw_data["global"], raw_data["local"])
-
-    os_cols = ["os_federated", "os_ondevice", "tandem"]
-    titles = ["federated", "local", "tandem"]
-    fig, axes = plt.subplots(nrows=1, ncols=len(titles), figsize=figsize)
-
-    def add_precision_recall_plot(os_col: str, ax, title: str = ""):
-        result = []
-        cache_dir = os.path.join(os.getcwd(), "results", "cache", "df_roc_{}.csv".format(os_col))
-        if os.path.exists(cache_dir):
-            print("Use cache")
-            df = pd.read_csv(cache_dir)
-            print(df)
-        else:
-            for client, data in raw_data.groupby(by="client"):
-                if client == 0:
-                    continue
-                for rep, rep_data in data.groupby(by="repetition"):
-                    if os_col == "tandem":
-                        # prec_outlier, rec_outlier = tandem_precision_recall_curve(
-                        #     rep_data["outlier"],
-                        #     probas_pred_local= rep_data["os_ondevice"],
-                        #     probas_pred_federated=rep_data["os_federated"],
-                        #     thresh_federated=99, pos_labels=[1, 2]
-                        # )
-                        prec_global, rec_global = tandem_precision_recall_curve(
-                            rep_data["global"],
-                            probas_pred_local=rep_data["os_ondevice"],
-                            probas_pred_federated=rep_data["os_federated"],
-                            thresh_federated=thresh, pos_labels=2
-                        )
-                        prec_local, rec_local = tandem_precision_recall_curve(
-                            rep_data["local"],
-                            probas_pred_local=rep_data["os_ondevice"],
-                            probas_pred_federated=rep_data["os_federated"],
-                            thresh_federated=thresh, pos_labels=1
-                        )
-                        # new_result_outlier = np.vstack([prec_outlier,
-                        #                                 rec_outlier,
-                        #                                 np.full_like(prec_outlier, fill_value=rep),
-                        #                                 np.full(shape=prec_outlier.shape, fill_value="any"),
-                        #                                 np.full(shape=prec_outlier.shape, fill_value="tandem"),
-                        #                                 np.full(shape=prec_outlier.shape,
-                        #                                         fill_value=client)]).T.tolist()
-                        new_result_global = np.vstack([prec_global,
-                                                       rec_global,
-                                                       np.full_like(prec_global, fill_value=rep),
-                                                       np.full(shape=prec_global.shape, fill_value="global"),
-                                                       np.full(shape=prec_global.shape, fill_value="tandem"),
-                                                       np.full(shape=prec_global.shape, fill_value=client)]).T.tolist()
-
-                        new_result_local = np.vstack([prec_local,
-                                                      rec_local,
-                                                      np.full_like(prec_local, fill_value=rep),
-                                                      np.full(shape=prec_local.shape, fill_value="local"),
-                                                      np.full(shape=prec_local.shape, fill_value="tandem"),
-                                                      np.full(shape=prec_local.shape, fill_value=client)]).T.tolist()
-                        result += new_result_global
-                        result += new_result_local
-                        # result += new_result_outlier
-                    else:
-                        # prec_outlier, rec_outlier, _ = precision_recall_curve(rep_data["outlier"], probas_pred=rep_data[os_col])
-                        prec_local, rec_local, _ = precision_recall_curve(rep_data["local"], probas_pred=rep_data[os_col])
-                        prec_global, rec_global, _ = precision_recall_curve(rep_data["global"], probas_pred=rep_data[os_col])
-                        new_result_global = np.vstack([prec_global,
-                                                       rec_global,
-                                                       np.full_like(prec_global, fill_value=rep),
-                                                       np.full(shape=prec_global.shape, fill_value="global"),
-                                                       np.full(shape=prec_global.shape, fill_value=os_col),
-                                                       np.full(shape=prec_global.shape, fill_value=client)]).T.tolist()
-
-                        new_result_local = np.vstack([prec_local,
-                                                      rec_local,
-                                                      np.full_like(prec_local, fill_value=rep),
-                                                      np.full(shape=prec_local.shape, fill_value="local"),
-                                                      np.full(shape=prec_local.shape, fill_value=os_col),
-                                                      np.full(shape=prec_local.shape, fill_value=client)]).T.tolist()
-                        # new_result_outlier = np.vstack([prec_outlier,
-                        #                                 rec_outlier,
-                        #                                 np.full_like(prec_outlier, fill_value=rep),
-                        #                                 np.full(shape=prec_outlier.shape, fill_value="any"),
-                        #                                 np.full(shape=prec_outlier.shape, fill_value=os_col),
-                        #                                 np.full(shape=prec_outlier.shape, fill_value=client)]).T.tolist()
-                        result += new_result_global
-                        result += new_result_local
-                        # result += new_result_outlie
-            result = np.asarray(result)
-            df = pd.DataFrame(result, columns=["precision", "recall", "rep", "outlier type", "method", "client"])
-            df.to_csv(cache_dir, index=False)
-        if title == "tandem":
-            print(df[df["outlier type"] == "global"])
-        df.dropna(inplace=True, axis=0)
-        data = df[df["method"] == os_col]
-        sns.lineplot(data=data, x="recall", y="precision", hue="outlier type", ax=ax)
-        ax.set_title(title)
-        ax.set_ylim(0, 1.05)
-        ax.set_xlim(0, 1)
-
-    for ax, os_col, title in zip(axes, os_cols, titles):
-        add_precision_recall_plot(os_col, ax, title)
-
-    move_legend_below_graph(axes, 3)
-
-    plt.show()
-
-
-def move_legend_below_graph(axes, ncol: int):
-    handles, labels = axes.flatten()[-1].get_legend_handles_labels()
-    for ax in axes:
-        if ax.get_legend():
-            ax.get_legend().remove()
-    plt.figlegend(handles, labels, loc='lower center', frameon=False, ncol=ncol)
-    fig = plt.gcf()
-    fig.subplots_adjust(bottom=0.2)
-
-    plt.tight_layout()
-
-
-def create_boxplot():
-    sns.set_palette(sns.cubehelix_palette(4))
-    df = pd.read_csv(os.path.join("results", "result.csv"))
-    df1 = copy.deepcopy(df)
-    df2 = copy.deepcopy(df)
-    df1["outlier score"] = df["os_federated"]
-    df1["detector"] = "federated"
-    df2["outlier score"] = df["os_ondevice"]
-    df2["detector"] = "local"
-    df = pd.concat([df1, df2])
-    df["type"] = "inlier"
-    df["type"][df["labels"] == 1] = "local outl."
-    df["type"][df["labels"] == 2] = "global outl."
-    df.sort_values(by="labels", inplace=True)
-    ax = sns.boxplot(x="detector", y="outlier score",
-                hue="type",
-                data=df)
-    move_legend_below_graph(axes=np.array([ax]), ncol=4)
     plt.show()
 
 
@@ -745,10 +211,57 @@ def create_result_table(thresh: float = 96):
             res = pd.DataFrame([scores_local, scores_global, scores_tandem],
                                columns=["Method", "Outlier Distr.", "Precision", "Recall", "F1"])
             result_dfs.append(res)
-
     result_df = pd.concat(result_dfs, ignore_index=True).groupby(by=["Outlier Distr.", "Method"]).mean().round(2).reset_index()
     print(result_df.to_latex(index=False))
 
 
+def plot_kde_partition_outliers():
+    sns.set_palette(sns.cubehelix_palette(n_colors=10))
+    data = pd.read_csv(os.path.join("results", "result.csv"))
+    data["shift"] = data["repetition"] / 9.0
+    ax = plt.gca()
+    for key, d in data.groupby(by="shift"):
+        os_federated = [
+            c_data["os_federated"].to_numpy() for _, c_data in d.groupby(by="client")
+        ]
+        os_star, probabilities = server_evaluation(os_federated)
+        sns.kdeplot(os_star[0], label="{}".format(round(key, 2)), ax=ax)
+    plt.ylabel("Density")
+    plt.xlabel("Outlier score")
+    move_legend_below_graph(np.asarray([ax]), ncol=5, title="Shift [std]")
+    plt.show()
+
+
+def latex_table_partition_outliers():
+    data = pd.read_csv(os.path.join("results", "result.csv"))
+    exp = np.floor(data["repetition"] / 50 + 2)
+    nobs = np.power(10, exp)
+    deviation = (data["repetition"] % 5) / 4.0
+    pattern_std = 0.1
+    deviation_std = deviation * pattern_std
+    data["shift"] = deviation_std
+    data["$|DB|$"] = nobs
+    print(np.unique(deviation))
+    bs = [1.0, 10.0, 100.0, 1000, "sqrt"]
+    table_data = []
+    data.sort_values(by=["$|DB|$"], inplace=True)
+    for DB, db_data in data.groupby("$|DB|$"):
+        for b in bs:
+            row = [DB, b if b != "sqrt" else r"$\sqrt{{|DB|}}$"]
+            for key, d in db_data.groupby(by="shift"):
+                os_federated = [
+                    c_data["os_federated"].to_numpy() for _, c_data in d.groupby(by="client")
+                ]
+                res = server_evaluation(os_federated, b)[1][0]
+                row.append(round(res, 2))
+            table_data.append(row)
+
+    columns = list(np.unique(deviation))
+    columns.insert(0, r"$|DB|$")
+    columns.insert(1, "b")
+    df = pd.DataFrame(table_data, columns=columns)
+    print(df.to_latex(index=False, escape=False))
+
+
 if __name__ == '__main__':
-    plot_evaluation_vary_inter_partition_divergence()
+    latex_table_partition_outliers()

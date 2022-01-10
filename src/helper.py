@@ -6,6 +6,8 @@ import torch
 import tsfel
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
+from scipy import stats as stats
 from tqdm import tqdm
 
 
@@ -45,13 +47,19 @@ def get_point_outliers(os_ondevice, os_federated, percentile=99, percentile_fede
     return local_outliers, global_outliers
 
 
-def server_evaluation(os_federated: np.ndarray):
+def server_evaluation(os_federated: np.ndarray, b = "sqrt"):
     means = []
     DB = len(np.concatenate(os_federated))
-    b = int(np.sqrt(DB))
+    if b == "max":
+        b = np.min([len(os) for os in os_federated])
+    if b == "sqrt":
+        b = int(np.sqrt(DB))
+    b = int(b)
     for i, arr in enumerate(os_federated):
         arr = np.sort(arr)
-        aggregation_size = b
+        db = len(arr)
+        aggregation_size = int(db / np.ceil(db / b))
+        print(b, db, aggregation_size)
         dim1 = int(len(arr) / aggregation_size)
         dim2 = aggregation_size
         arr = arr[:dim1*dim2]
@@ -177,3 +185,23 @@ ipek_split_ratios = [
     3500 / 7500,
     2400 / 6000
 ]
+
+
+def centered_truncnorm(width_std, mean, std, size):
+    my_mean = mean
+    my_std = std
+    myclip_a = my_mean - width_std * my_std
+    myclip_b = my_mean + width_std * my_std
+    a, b = (myclip_a - my_mean) / my_std, (myclip_b - my_mean) / my_std
+    return stats.truncnorm.rvs(a, b, loc=mean, scale=std, size=size)
+
+
+def move_legend_below_graph(axes, ncol: int, title: str):
+    handles, labels = axes.flatten()[-1].get_legend_handles_labels()
+    for ax in axes:
+        if ax.get_legend():
+            ax.get_legend().remove()
+    plt.figlegend(handles, labels, loc='lower center', frameon=False, ncol=ncol, title=title)
+    fig = plt.gcf()
+    fig.subplots_adjust(bottom=0.2)
+    plt.tight_layout()
