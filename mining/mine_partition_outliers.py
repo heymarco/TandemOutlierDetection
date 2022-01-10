@@ -88,6 +88,5 @@ def plot_partition_outlier():
         plt.show()
 
 
-
 if __name__ == '__main__':
     plot_partition_outlier()

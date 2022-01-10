@@ -2,14 +2,12 @@ from collections import OrderedDict
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import numpy as np
 
 import flwr as fl
 
 from src.training import train, test
-from src.helper import get_device
 
 
 class Encoder(nn.Module):

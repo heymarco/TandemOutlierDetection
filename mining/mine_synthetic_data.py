@@ -1,15 +1,12 @@
-import copy
 import os
 import sys
-from sklearn.metrics import precision_recall_curve
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from tqdm import tqdm
 
 sys.path.insert(0, ".")
-from src.helper import get_point_outliers, server_evaluation, tandem_precision_recall_curve, move_legend_below_graph
+from src.helper import get_point_outliers, server_evaluation, move_legend_below_graph
 
 import matplotlib as mpl
 
@@ -18,62 +15,6 @@ mpl.rcParams['text.latex.preamble'] = r'\usepackage{times}'
 mpl.rc('font', family='serif')
 
 figsize = (9, 2.5)
-
-
-def plot_schema_2d_partition_outlier(ax):
-    center_a = (0.3, 0.3)
-    center_b = (0.7, 0.7)
-    diameter = 0.2
-    circle_a = plt.Circle(center_a, diameter, alpha=0.5, color="blue")
-    circle_b = plt.Circle(center_b, diameter, alpha=0.5, color="red")
-    ax.add_artist(circle_a)
-    ax.add_artist(circle_b)
-    num_points = 4
-    line_points_x = [center_a[0] + i / num_points * (center_b[0] - center_a[0]) for i in range(num_points)]
-    line_points_y = [center_a[1] + i / num_points * (center_b[1] - center_a[1]) for i in range(num_points)]
-    center_c = line_points_x[1], line_points_y[1]
-    circle_c = plt.Circle(center_c, diameter, alpha=0.3, color="black", lw=0)
-    line_points_x = line_points_x[:2]
-    line_points_y = line_points_y[:2]
-    ax.add_artist(circle_c)
-    ax.plot(line_points_x, line_points_y, c="black", marker=".", lw=0.0)
-    ax.arrow(center_a[0], center_a[1], center_b[0] - center_a[0], center_b[1] - center_a[1], color="black",
-             lw=0.7, head_width=0.05, shape="full", zorder=3, length_includes_head=True)
-    ax.set_ylabel("dim 2")
-    ax.set_xlabel("dim 1")
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_ylim(0.0, 1.0)
-    ax.set_xlim(0.0, 1.0)
-    ax.set_title("Schema")
-    ax.annotate(text="A", xy=(center_a[0] + 0.01, center_a[1] - 0.07))
-    ax.annotate(text="B", xy=(center_b[0] + 0.02, center_b[1] - 0.07))
-    ax.annotate(text=r"$c_i$", xy=(center_b[0] - 0.1, center_a[1]))
-
-
-def plot_schema_2d(ax):
-    center_a = (0.3, 0.3)
-    center_b = (0.7, 0.7)
-    diameter = 0.2
-    circle_a = plt.Circle(center_a, diameter, alpha=0.3, color="black", lw=0)
-    circle_b = plt.Circle(center_b, diameter, alpha=0.3, color="black", lw=0)
-    ax.add_artist(circle_a)
-    ax.add_artist(circle_b)
-    num_points = 4
-    line_points_x = [center_a[0] + i / num_points * (center_b[0] - center_a[0]) for i in range(num_points)]
-    line_points_y = [center_a[1] + i / num_points * (center_b[1] - center_a[1]) for i in range(num_points)]
-    ax.plot(line_points_x, line_points_y, c="black", marker=".", lw=0.0)
-    ax.arrow(center_a[0], center_a[1], center_b[0] - center_a[0], center_b[1] - center_a[1], color="black",
-             lw=0.7, head_width=0.05, shape="full", zorder=3, length_includes_head=True)
-    ax.set_ylabel("dim 2")
-    ax.set_xlabel("dim 1")
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_ylim(0.0, 1.0)
-    ax.set_xlim(0.0, 1.0)
-    ax.set_title("Schema")
-    ax.annotate(text="A", xy=(center_a[0] + 0.01, center_a[1] - 0.07))
-    ax.annotate(text="B", xy=(center_b[0] + 0.02, center_b[1] - 0.07))
 
 
 def plot_outlier_scores(thresh: float = 96.0):
@@ -109,59 +50,7 @@ def plot_outlier_scores(thresh: float = 96.0):
     plt.show()
 
 
-def plot_partition_outliers_over_shift_distance():
-    sns.set_palette(sns.cubehelix_palette(2))
-    filepath = os.path.join(os.getcwd(), "results", "results_po_1000.csv")
-    raw_data = pd.read_csv(filepath)
-    grouped_by_exp_index = raw_data.groupby(by="repetition")
-
-    max_reps = np.max(raw_data["repetition"])
-    results = []
-
-    for rep, df in grouped_by_exp_index:
-        grouped_by_client = df.groupby(by="client")
-        os_federated = [
-            data[1]["os_federated"].to_numpy() for data in grouped_by_client
-        ]
-        res = server_evaluation(os_federated)
-        shift_amount = rep / (max_reps - 1)
-        [results.append([rep, client, shift_amount,
-                         res[0][client], res[1][client]]) for client in range(len(res[0]))]
-
-    result_df = pd.DataFrame(results, columns=["rep", "client", "shift-amount", "os-star", "p-value"])
-    result_normal = result_df[result_df["client"] != 0]
-    result_anomaly = result_df[result_df["client"] == 0]
-    task_ab_clients = np.logical_and(result_normal["client"] < 20, result_normal["client"] >= 10)
-    normal_mean = result_normal.groupby("rep").mean().sort_values(by="shift-amount").rolling(window=1,
-                                                                                             center=True).mean()
-    task_a_mean = result_normal[result_normal["client"] < 10].groupby("rep").mean().sort_values(
-        by="shift-amount").rolling(window=1, center=True).mean()
-    task_ab_mean = result_normal[task_ab_clients].groupby("rep").mean().sort_values(by="shift-amount").rolling(window=1,
-                                                                                                               center=True).mean()
-    task_b_mean = result_normal[20 <= result_normal["client"]].groupby("rep").mean().sort_values(
-        by="shift-amount").rolling(window=1, center=True).mean()
-    anomaly_mean = result_anomaly.sort_values(by="shift-amount").rolling(window=1, center=True).median()
-
-    fig, axes = plt.subplots(1, 2)
-    x = anomaly_mean["shift-amount"]
-    axes[1].scatter(x, task_a_mean["p-value"], label="A")
-    axes[1].scatter(x, task_ab_mean["p-value"], label="AB")
-    axes[1].scatter(x, task_b_mean["p-value"], label="B")
-    axes[1].scatter(x, anomaly_mean["p-value"], label="PO")
-    for ax_index, ax in enumerate(axes[1:]):
-        if ax.get_legend():
-            ax.get_legend().remove()
-        ax.set_xlabel("")
-        ax.set_ylabel("")
-        ax.set_xticks([0.0, 0.5, 1.0])
-        ax.set_xticklabels(["A", "inbetween", "B"])
-    axes[1].set_yscale("log")
-    axes[1].legend()
-    plot_schema_2d_partition_outlier(axes[0])
-    plt.show()
-
-
-def create_result_table(thresh: float = 96):
+def latex_table_point_outliers(thresh: float = 96):
     data = pd.read_csv(os.path.join("results", "result.csv"))
     result_dfs = []
 

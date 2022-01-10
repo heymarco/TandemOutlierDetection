@@ -11,38 +11,15 @@ esac
 done
 
 num_clients=0
-if [ "$type" == "melbourne" ];
-then
-  num_clients=9
-elif [ "$type" == "baiot" ];
-then
-  num_clients=9
-elif [ "$type" == "arculus" ];
-then
-  num_clients=20
-elif [ "$type" == "ipek" ];
+if [ "$type" == "ipek" ];
 then
   num_clients=15
-elif [ "$type" == "mnist" ];
-then
-  num_clients=9
-elif [ "$type" == "synth" ];
-then
-  num_clients=30
 elif [ "$type" == "local/global" ];
 then
   num_clients=30
 elif [ "$type" == "partition_outlier" ];
 then
   num_clients=30
-elif [ "$type" == "synth_vary_clients" ];
-then
-  repetitions_with_same_params=10
-  all_num_clients=(2 3 4 6 8 12 15 20 25 30)
-  counter_for_params=$((exp / repetitions_with_same_params))
-  num_clients=${all_num_clients[$counter_for_params / 4]};
-  echo "$((counter_for_params / 4))"
-  echo "$num_clients"
 fi
 
 # This will allow you to use CTRL+C to stop all background processes

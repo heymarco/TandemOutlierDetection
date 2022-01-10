@@ -17,8 +17,7 @@ if __name__ == '__main__':
     parser.add_argument("-num_clients", type=int, required=False,
                         help="The number of clients")
     parser.add_argument("-to_csv", type=bool, default=False, required=True, help="Save result?")
-    parser.add_argument("-type", type=str, choices=["melbourne", "baiot", "arculus", "ipek", "mnist",
-                                                    "synth", "synth_vary_clients", "local/global", "partition_outlier"],
+    parser.add_argument("-type", type=str, choices=["ipek", "local/global", "partition_outlier"],
                         required=True,
                         help="The clients to start")
     args = parser.parse_args()

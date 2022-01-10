@@ -15,21 +15,6 @@ def get_device():
     return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-def ecdf(x):
-    x = np.array(x, copy=True)
-    assert len(x.shape) == 1
-    x.sort()
-    nobs = len(x)
-    y = np.linspace(1.0 / nobs, 1, nobs)
-    return x, y
-
-
-def confidence(dist: np.ndarray):
-    dist = np.abs(dist)
-    nobs = len(dist)
-    return 1 - np.exp(-2*nobs*dist)
-
-
 def get_point_outliers(os_ondevice, os_federated, percentile=99, percentile_federated = False):
     if not percentile_federated:
         print("Use percentile_federated = 99")
@@ -103,9 +88,6 @@ def save_outlier_scores(client_indices: List[int], os_federated: List[np.ndarray
                 label
             ])
     df = pd.DataFrame(new_results)
-    # df.to_csv(file_path,
-    #           header=["repetition", "client", "os_federated", "os_ondevice", "labels"],
-    #           index=False)
     if not os.path.exists(file_path):
         df.to_csv(file_path,
                   header=["repetition", "client", "os_federated", "os_ondevice", "labels"],
@@ -127,46 +109,6 @@ def extract_features_in_sliding_window(df: pd.DataFrame, window_size: int = 20, 
     print("Length of features is {}".format(len(features)))
     return features
 
-
-def tandem_precision_recall_curve(labels, probas_pred_local, probas_pred_federated, thresh_federated: float, pos_labels):
-    percentiles = np.arange(len(labels) + 1) / len(labels) * 100
-    precisions = [0.0]
-    recalls = [1.0]
-    for prob in tqdm(percentiles):
-        local_outliers, global_outliers = get_point_outliers(probas_pred_local, probas_pred_federated,
-                                                             percentile=prob, percentile_federated=thresh_federated)
-        pred = np.full_like(local_outliers, 0, dtype=int)
-        pred[local_outliers] = 1
-        pred[global_outliers] = 2
-        if isinstance(pos_labels, int):
-            pred = pred == pos_labels
-        else:
-            try:
-                pred = np.isin(pred, pos_labels)
-            except:
-                raise "Error: pos_labels must be integer or arr-like"
-
-        TP = np.nansum(np.logical_and(pred, labels))
-        FP = np.nansum(np.logical_and(pred, np.invert(labels)))
-        FN = np.nansum(np.logical_and(np.invert(pred), labels))
-
-        # Calculate true positive rate and false positive rate
-        # Use try-except statements to avoid problem of dividing by 0
-        try:
-            precision = TP / (TP + FP)
-        except:
-            precision = 1
-
-        try:
-            recall = TP / (TP + FN)
-        except:
-            recall = 1
-
-        precisions.append(precision)
-        recalls.append(recall)
-    precisions.append(1.0)
-    recalls.append(0.0)
-    return np.asarray(precisions), np.asarray(recalls)
 
 ipek_split_ratios = [
     5600 / 14200,
