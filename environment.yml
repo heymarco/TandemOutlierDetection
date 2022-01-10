@@ -1,0 +1,22 @@
+name: TandemOutlierDetection
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8
+  - keras
+  - cudatoolkit=10.2
+  - pytorch
+  - torchvision
+  - matplotlib
+  - pandas
+  - scipy
+  - scikit-learn
+  - tensorflow
+  - seaborn
+  - pip
+  - pip:
+    - flwr
+    - tqdm
+    - tsfel
