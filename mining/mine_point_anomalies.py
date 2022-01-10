@@ -7,6 +7,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.lines import Line2D
 
+import matplotlib as mpl
+mpl.rcParams['text.usetex'] = True
+mpl.rcParams['text.latex.preamble'] = r'\usepackage{libertine}'
+mpl.rc('font', family='serif')
+
 sys.path.insert(0, ".")
 from src.helper import get_point_outliers, ipek_split_ratios
 
@@ -179,7 +184,6 @@ def plot_point_anomalies():
 def get_outlier_indices():
     filepath = os.path.join("results", "ipek_results.csv")
     raw_data = pd.read_csv(filepath)
-
     grouped_by_exp_index = raw_data.groupby(by="repetition")
     for tpl in grouped_by_exp_index:
         df = tpl[1]
@@ -200,9 +204,7 @@ def get_outlier_indices():
         for cid, (osf, oso, device_labels) in enumerate(zip(os_federated, os_ondevice, labels)):
             local_outliers, global_outliers = get_point_outliers(os_ondevice=oso,
                                                                  os_federated=osf,
-                                                                 percentile=percentile,
-                                                                 is_outlier_confidence=0.99,
-                                                                 classification_confidence=0.9)
+                                                                 percentile=percentile)
             lo.append(list(local_outliers))
             go.append(list(global_outliers))
 
@@ -210,7 +212,7 @@ def get_outlier_indices():
 
 
 def print_metrics():
-    filepath = os.path.join("results", "ipek_results.csv")
+    filepath = os.path.join("results", "ipek_results_030122.csv")
     raw_data = pd.read_csv(filepath)
 
     grouped_by_exp_index = raw_data.groupby(by="repetition")
@@ -277,9 +279,115 @@ def plot_data(for_device: int):
             ax.plot(file.index, file[col], color="black", lw=0.3)
 
 
+def plot_global_outlier(for_device: int, dims = ["batC"], figsize = (4, 3)):
+    palette = sns.cubehelix_palette(3)
+    lo, go = get_outlier_indices()
+    data_dir = os.path.join("data", "ipek")
+    assert os.path.exists(data_dir), "The directory '{}' does not exist".format(data_dir)
+    filenames = os.listdir(data_dir)
+    filenames = sorted(filenames)
+    for filename in filenames:
+        if not filename.endswith(".csv"):
+            continue
+        if "P{}.csv".format(for_device) not in filename:
+            continue
+        path_to_file = os.path.join(data_dir, filename)
+        file = pd.read_csv(path_to_file, sep=";")
+        file.drop(["time"], axis=1, inplace=True)
+        file = file[file["batC"] > 0.6]
+        file.reset_index(drop=True, inplace=True)
+        inliers = np.invert(
+            np.logical_or(lo[for_device - 1], go[for_device - 1])
+        )
+        fig, axes = plt.subplots(2, 1, sharex=False, sharey=False)
+        # each "inlier" represents one segment of size "window_size
+        for i in range(len(inliers)):
+            if inliers[i]:
+                color = palette[0]
+                alpha = 1.0
+                zorder = 1
+            elif lo[for_device - 1][i]:
+                color = palette[1]
+                alpha = 1.0
+                zorder = 2
+            elif go[for_device - 1][i]:
+                color = palette[2]
+                alpha = 1.0
+                zorder = 3
+            for feature_index, col in enumerate(dims):
+                relevant_data = file[col]
+                x, y = __get_window__(relevant_data, outlier_index=i, stride=25, window_size=100)
+                for ax in axes:
+                    ax.plot(x, y, color=color, alpha=alpha, zorder=zorder)
+        custom_lines = [Line2D([0], [0], color=palette[0]),
+                        Line2D([0], [0], color=palette[1]),
+                        Line2D([0], [0], color=palette[2])]
+        plt.figlegend(custom_lines, ["inlier", "local", "global"],
+                      loc='lower center', frameon=False, ncol=4)
+        fig = plt.gcf()
+        fig.set_size_inches(figsize[0], figsize[1])
+        axes[1].set_xlabel("time")
+        axes[0].set_ylabel("current")
+        axes[1].set_ylabel("current")
+        plt.tight_layout()
+        plt.show()
+
+
+def plot_federated_outlier(for_device: int, dims = ["batC"], figsize = (4, 3)):
+    lo, go = get_outlier_indices()
+    data_dir = os.path.join("data", "ipek")
+    assert os.path.exists(data_dir), "The directory '{}' does not exist".format(data_dir)
+    filenames = os.listdir(data_dir)
+    filenames = sorted(filenames)
+    for filename in filenames:
+        if not filename.endswith(".csv"):
+            continue
+        if "P{}.csv".format(for_device) not in filename:
+            continue
+        path_to_file = os.path.join(data_dir, filename)
+        file = pd.read_csv(path_to_file, sep=";")
+        file.drop(["time"], axis=1, inplace=True)
+        file = file[file["batC"] > 0.6]
+        file.reset_index(drop=True, inplace=True)
+        inliers = np.invert(
+            np.logical_or(lo[for_device - 1], go[for_device - 1])
+        )
+        fig, axes = plt.subplots(2, 1, sharex=False, sharey=False)
+        # each "inlier" represents one segment of size "window_size
+        for i in range(len(inliers)):
+            if inliers[i]:
+                color = palette[0]
+                alpha = 1.0
+                zorder = 1
+            elif lo[for_device - 1][i]:
+                color = palette[1]
+                alpha = 1.0
+                zorder = 2
+            elif go[for_device - 1][i]:
+                color = palette[2]
+                alpha = 1.0
+                zorder = 3
+            for feature_index, col in enumerate(dims):
+                relevant_data = file[col]
+                x, y = __get_window__(relevant_data, outlier_index=i, stride=25, window_size=100)
+                for ax in axes:
+                    ax.plot(x, y, color=color, alpha=alpha, zorder=zorder)
+        custom_lines = [Line2D([0], [0], color=palette[0]),
+                        Line2D([0], [0], color=palette[1]),
+                        Line2D([0], [0], color=palette[2])]
+        plt.figlegend(custom_lines, ["inlier", "local", "global"],
+                      loc='lower center', frameon=False, ncol=4)
+        fig = plt.gcf()
+        fig.set_size_inches(figsize[0], figsize[1])
+        axes[1].set_xlabel("time")
+        axes[0].set_ylabel("current")
+        axes[1].set_ylabel("current")
+        plt.tight_layout()
+        plt.show()
+
+
 if __name__ == '__main__':
-    print_metrics()
-    device = 13
-    plot_data(for_device=device)
-    plot_outlier_windows(for_device=device)
+    device = 15
+    # plot_data(for_device=device)
+    plot_global_outlier(device)
     # plot_point_anomalies()

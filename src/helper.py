@@ -1,13 +1,12 @@
 import os
 from typing import List
 
+import scipy.stats
 import torch
 import tsfel
-from flwr.common.logger import log
-import logging
 import numpy as np
 import pandas as pd
-from scipy.stats import norm, t
+from tqdm import tqdm
 
 
 def get_device():
@@ -29,54 +28,54 @@ def confidence(dist: np.ndarray):
     return 1 - np.exp(-2*nobs*dist)
 
 
-def get_point_outliers(os_ondevice, os_federated, percentile=99,
-                       is_outlier_confidence=0.99, classification_confidence=0.95):
+def get_point_outliers(os_ondevice, os_federated, percentile=99, percentile_federated = False):
+    if not percentile_federated:
+        print("Use percentile_federated = 99")
+        percentile_federated = percentile
     os_ondevice = np.array(os_ondevice)
     os_federated = np.array(os_federated)
     percentile_thresh_ondevice = np.percentile(os_ondevice, q=percentile)
-    percentile_thresh_federated = np.percentile(os_federated, q=percentile)
+    percentile_thresh_federated = np.percentile(os_federated, q=percentile_federated)
     # the distance to the quantile
-    diff_to_thresh_ondevice = np.array(os_ondevice) - percentile_thresh_ondevice
-    diff_to_thresh_federated = np.array(os_federated) - percentile_thresh_federated
-    # the confidence that the outlier score is on the correct side of the threshold
-    confidence_ondevice = confidence(diff_to_thresh_ondevice)
-    confidence_federated = confidence(diff_to_thresh_federated)
-    all_outliers = np.logical_and(os_ondevice >= percentile_thresh_ondevice,
-                                  confidence_ondevice > is_outlier_confidence)
-    global_outlier_candidates = os_federated >= percentile_thresh_federated
+    local_outliers = np.logical_and(os_ondevice > percentile_thresh_ondevice,
+                                    os_federated <= percentile_thresh_federated)
+    global_outliers = np.logical_and(os_ondevice > percentile_thresh_ondevice,
+                                     os_federated > percentile_thresh_federated)
 
-    significant_global_outliers = np.logical_and(
-        all_outliers,
-        np.logical_and(
-            global_outlier_candidates,
-            confidence_federated > classification_confidence
-        )
-    )
-    significant_local_outliers = np.logical_and(
-        all_outliers,
-        np.invert(significant_global_outliers)
-    )
-
-    log(logging.WARNING, "Number of local outliers: {}".format(np.sum(significant_local_outliers)))
-    log(logging.WARNING, "Number of global outliers: {}".format(np.sum(significant_global_outliers)))
-
-    return significant_local_outliers, significant_global_outliers
+    return local_outliers, global_outliers
 
 
 def server_evaluation(os_federated: np.ndarray):
-    os_star = np.array([np.mean(os) for os in os_federated])
-    os_star = (os_star - np.median(os_star)) / np.std(os_star)
-    mean = np.mean(os_star)
-    std = np.std(os_star, ddof=1)
-    probs = [t.sf(val, loc=mean, scale=std, df=len(os_star)-1) for val in os_star]
-    return np.array(os_star), np.array(probs)
+    means = []
+    DB = len(np.concatenate(os_federated))
+    b = int(np.sqrt(DB))
+    for i, arr in enumerate(os_federated):
+        arr = np.sort(arr)
+        aggregation_size = b
+        dim1 = int(len(arr) / aggregation_size)
+        dim2 = aggregation_size
+        arr = arr[:dim1*dim2]
+        means.append(np.reshape(arr, newshape=(dim1, dim2)).mean(axis=-1))
+
+    p_values = []
+    for i, device_mean in enumerate(means):
+        dist_a = device_mean
+        dist_b = []
+        for j, m in enumerate(means):
+            if j != i:
+                dist_b += m.tolist()
+        p = scipy.stats.mannwhitneyu(dist_a, dist_b, alternative="greater")
+        p_values.append(p[1])
+
+    return np.array(means), np.array(p_values)
 
 
 def save_outlier_scores(client_indices: List[int], os_federated: List[np.ndarray], os_ondevice: List[np.ndarray],
                         labels: List[np.ndarray], exp_repetition):
     # create dataframe and store in "results"
-    results_dir = os.path.join("results")
+    results_dir = os.path.join(os.getcwd(), "results")
     file_path = os.path.join(results_dir, "result.csv")
+    print("Saving result under " + file_path)
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
     new_results = []
@@ -120,6 +119,46 @@ def extract_features_in_sliding_window(df: pd.DataFrame, window_size: int = 20, 
     print("Length of features is {}".format(len(features)))
     return features
 
+
+def tandem_precision_recall_curve(labels, probas_pred_local, probas_pred_federated, thresh_federated: float, pos_labels):
+    percentiles = np.arange(len(labels) + 1) / len(labels) * 100
+    precisions = [0.0]
+    recalls = [1.0]
+    for prob in tqdm(percentiles):
+        local_outliers, global_outliers = get_point_outliers(probas_pred_local, probas_pred_federated,
+                                                             percentile=prob, percentile_federated=thresh_federated)
+        pred = np.full_like(local_outliers, 0, dtype=int)
+        pred[local_outliers] = 1
+        pred[global_outliers] = 2
+        if isinstance(pos_labels, int):
+            pred = pred == pos_labels
+        else:
+            try:
+                pred = np.isin(pred, pos_labels)
+            except:
+                raise "Error: pos_labels must be integer or arr-like"
+
+        TP = np.nansum(np.logical_and(pred, labels))
+        FP = np.nansum(np.logical_and(pred, np.invert(labels)))
+        FN = np.nansum(np.logical_and(np.invert(pred), labels))
+
+        # Calculate true positive rate and false positive rate
+        # Use try-except statements to avoid problem of dividing by 0
+        try:
+            precision = TP / (TP + FP)
+        except:
+            precision = 1
+
+        try:
+            recall = TP / (TP + FN)
+        except:
+            recall = 1
+
+        precisions.append(precision)
+        recalls.append(recall)
+    precisions.append(1.0)
+    recalls.append(0.0)
+    return np.asarray(precisions), np.asarray(recalls)
 
 ipek_split_ratios = [
     5600 / 14200,

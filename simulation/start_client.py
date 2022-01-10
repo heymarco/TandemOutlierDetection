@@ -27,7 +27,8 @@ from src.federated_learning.clients.melbourne_client import MelbourneSensorDataC
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-type", type=str,
-                        choices=["melbourne", "baiot", "arculus", "ipek", "mnist", "synth", "synth_vary_clients"],
+                        choices=["melbourne", "baiot", "arculus", "ipek", "mnist", "synth",
+                                 "synth_vary_clients", "local/global", "partition_outlier"],
                         required=True, help="The clients to start")
     parser.add_argument("-client_index", type=int, required=True, help="The index of clients")
     parser.add_argument("-exp_index", type=int, required=True, help="The experiment index")
@@ -49,6 +50,14 @@ if __name__ == '__main__':
     if args.type == "mnist":
         train, test = load_mnist_partition(args.client_index)
         client = MnistClient(trainloader=train, testloader=test, client_index=args.client_index)
+    if args.type == "local/global":
+        train, test = load_synthetic_partition(index=args.client_index, experiment=args.type,
+                                               nobs=1000, **args.__dict__)
+        client = SyntheticClient(trainloader=train, testloader=test, client_index=args.client_index)
+    if args.type == "partition_outlier":
+        train, test = load_synthetic_partition(index=args.client_index, experiment=args.type,
+                                               nobs=1000, **args.__dict__)
+        client = SyntheticClient(trainloader=train, testloader=test, client_index=args.client_index)
     if args.type == "synth_vary_clients":
         experiment = "partition outlier"
         num_reps = args.num_reps

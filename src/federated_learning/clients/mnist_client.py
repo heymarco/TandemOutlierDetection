@@ -16,7 +16,7 @@ from src.training import train, test
 class OneLayerAutoencoder(nn.Module):
     def __init__(self):
         super(OneLayerAutoencoder, self).__init__()
-        compression = 0.4
+        compression = 0.7
         self.enc = nn.Linear(in_features=28*28, out_features=int(compression*28*28))
         self.dec = nn.Linear(in_features=int(compression*28*28), out_features=28*28)
 

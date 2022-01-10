@@ -29,6 +29,12 @@ then
 elif [ "$type" == "synth" ];
 then
   num_clients=30
+elif [ "$type" == "local/global" ];
+then
+  num_clients=30
+elif [ "$type" == "partition_outlier" ];
+then
+  num_clients=30
 elif [ "$type" == "synth_vary_clients" ];
 then
   repetitions_with_same_params=10

@@ -14,14 +14,17 @@ from src.training import train, test
 class OneLayerAutoencoder(nn.Module):
     def __init__(self):
         super(OneLayerAutoencoder, self).__init__()
-        self.enc = nn.Linear(in_features=20, out_features=8)
-        self.dec = nn.Linear(in_features=8, out_features=20)
+        in_features = 10
+        enc_factor = 0.7
+        enc_features = int(enc_factor * in_features)
+        self.enc = nn.Linear(in_features=in_features, out_features=enc_features)
+        self.dec = nn.Linear(in_features=enc_features, out_features=in_features)
+        self.do = nn.Dropout(p=0.0, inplace=False)
 
     def forward(self, x):
-        x = self.enc(x)
-        x = torch.relu(x)
-        x = self.dec(x)
-        x = torch.tanh(x)
+        x = torch.relu(self.enc(x))
+        x = self.do(x)
+        x = torch.sigmoid(self.dec(x))
         return x
 
 
@@ -34,6 +37,7 @@ class SyntheticClient(fl.client.NumPyClient):
         self.trainloader = trainloader
         self.testloader = testloader
         self.client_index = client_index
+        self.round = 0
 
     def get_parameters(self):
         return [val.cpu().numpy() for _, val in self.federated_detector.state_dict().items()]
@@ -47,7 +51,7 @@ class SyntheticClient(fl.client.NumPyClient):
         self.set_parameters(parameters)
         lr_local = 0.01
         lr_federated = lr_local
-        train(self.federated_detector, self.trainloader, epochs=1, lr=lr_federated)
+        train(self.federated_detector, self.trainloader, epochs=2, lr=lr_federated)
         train(self.ondevice_detector, self.trainloader, epochs=1, lr=lr_local)
         return self.get_parameters(), 1000, {}
 

@@ -12,19 +12,19 @@ from src.helper import server_evaluation
 
 import matplotlib as mpl
 mpl.rcParams['text.usetex'] = True
-mpl.rcParams['text.latex.preamble'] = r'\usepackage{libertine}'
+mpl.rcParams['text.latex.preamble'] = r'\usepackage{times}'
 mpl.rc('font', family='serif')
 # sns.set_palette(sns.color_palette("rocket"))
 
 
 def plot_partition_outlier():
-    filepath = os.path.join("results", "ipek_results.csv")
+    filepath = os.path.join("results", "result.csv")
     raw_data = pd.read_csv(filepath)
-    colors = sns.color_palette("vlag_r", as_cmap=False, n_colors=1200)
+    colors = sns.cubehelix_palette(n_colors=1200)
     colors = colors[:500] + colors[700:]
-    # colors = [colors[-i] for i in range(len(colors))]
+    colors = [colors[-i] for i in range(len(colors))]
 
-    grouped_by_exp_index = raw_data.groupby(by="repetition")
+    grouped_by_exp_index = raw_data.sort_values(by="repetition").groupby(by="repetition")
     for tpl in grouped_by_exp_index:
         df = tpl[1]
         exp_results = []
@@ -35,26 +35,26 @@ def plot_partition_outlier():
         os_star, probabilities = server_evaluation(os_federated)
 
         alpha = 0.05
-        indices = np.arange((len(probabilities)))
-        x_inlier = indices[probabilities > alpha]
-        x_outlier = indices[probabilities <= alpha]
-        y_inlier = probabilities[probabilities > alpha]
-        y_outlier = probabilities[probabilities <= alpha]
+        print(os_star)
+        print(probabilities)
 
-        fig, axes = plt.subplots(2, 1, figsize=(4, 4))
+        fig, axes = plt.subplots(2, 1, figsize=(4, 3))
+        sns.kdeplot(np.concatenate(os_star), color="black", lw=5, alpha=0.3, label="overall", ax=axes[0])
 
-        for i, outlier_scores in enumerate(os_federated):
-            color = colors[int(np.floor(probabilities[i]*1000))]
+        for i, outlier_scores in enumerate(os_star):
+            color = sns.cubehelix_palette(n_colors=2)[0] if probabilities[i] > alpha else sns.cubehelix_palette(n_colors=2)[-1]
+            # color = colors[int(np.floor(probabilities[i]*1000))]
             _alpha = 0.7
             sns.kdeplot(outlier_scores, label="Device {}".format(i+1), alpha=_alpha, color=color,
                         ax=axes[0], zorder=int(100*(1-probabilities[i])))
+        # axes[0].set_xlim(left=4, right=30)
         axes[0].set_ylabel("kde")
         axes[0].set_xlabel("outlier score")
 
         for i, prob in enumerate(probabilities):
-            color = colors[int(np.floor(probabilities[i] * 1000))]
+            color = sns.cubehelix_palette(n_colors=2)[0] if probabilities[i] > alpha else sns.cubehelix_palette(n_colors=2)[-1]
             axes[1].scatter([i], [prob], color=color)
-        axes[1].axhline(0.05, color="black", label=r"$\alpha=0.05$", lw=0.5)
+        axes[1].axhline(alpha, color="black", label=r"$\alpha={}$".format(round(alpha, 2)), lw=0.5)
         axes[1].set_ylabel("p-value")
         axes[1].set_xlabel("device index")
         ticks = [index for index in range(len(probabilities)) if index % 2]

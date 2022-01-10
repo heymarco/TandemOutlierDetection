@@ -144,7 +144,7 @@ def __load_data__(index: int):
         file = pd.read_csv(path_to_file, sep=";", index_col=0)
         data_columns = file.columns
 
-        # if index < 15:
+        # if index == 15:
         #     file = pd.concat([
         #         file.iloc[int(len(file) * ipek_split_ratios[index]):],  # Schrauben
         #         # file.iloc[:int(len(file) * ipek_split_ratios[index])].sample(2),

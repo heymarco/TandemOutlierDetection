@@ -21,7 +21,7 @@ def train(net, loader, epochs, lr=0.01, momentum=0.9, verbose: bool = False):
             loss = criterion(output, data)
             loss.backward()
             optimizer.step()
-            if e % 10 == 0 and b == len(loader)-1 and np.random.uniform() < 0.05:
+            if verbose and e % 10 == 0 and b == len(loader)-1 and np.random.uniform() < 0.05:
                 plt.clf()
                 plt.plot(range(data.size()[-1]), data[0][0].detach().numpy(), label="original", lw=0.3)
                 plt.plot(range(data.size()[-1]), output[0][0].detach().numpy(), label="reconstruction", lw=0.3)

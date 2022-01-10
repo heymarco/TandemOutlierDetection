@@ -99,9 +99,11 @@ class OneLayerAutoencoder(nn.Module):
         enc_features = int(enc_factor * in_features)
         self.enc = nn.Linear(in_features=in_features, out_features=enc_features)
         self.dec = nn.Linear(in_features=enc_features, out_features=in_features)
+        self.do = nn.Dropout(p=0.0, inplace=False)
 
     def forward(self, x):
         x = torch.relu(self.enc(x))
+        x = self.do(x)
         x = self.dec(x)
         return x
 

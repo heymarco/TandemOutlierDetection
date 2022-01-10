@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/../tandem_outlier_detection/.idea/tandem_outlier_detection.iml" filepath="$PROJECT_DIR$/../tandem_outlier_detection/.idea/tandem_outlier_detection.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/TandemOutlierDetection.iml" filepath="$PROJECT_DIR$/.idea/TandemOutlierDetection.iml" />
     </modules>
   </component>
 </project>

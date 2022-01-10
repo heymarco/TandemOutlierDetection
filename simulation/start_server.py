@@ -18,7 +18,7 @@ if __name__ == '__main__':
                         help="The number of clients")
     parser.add_argument("-to_csv", type=bool, default=False, required=True, help="Save result?")
     parser.add_argument("-type", type=str, choices=["melbourne", "baiot", "arculus", "ipek", "mnist",
-                                                    "synth", "synth_vary_clients"],
+                                                    "synth", "synth_vary_clients", "local/global", "partition_outlier"],
                         required=True,
                         help="The clients to start")
     args = parser.parse_args()
@@ -33,7 +33,8 @@ if __name__ == '__main__':
         min_eval_clients=num_clients,
         min_available_clients=num_clients,
         exp_repetition=args.exp_index,
-        to_csv=args.to_csv
+        to_csv=args.to_csv,
+        num_rounds=args.num_rounds
     )
     fl.server.start_server(config=server_config, strategy=strategy)
     sys.exit()
