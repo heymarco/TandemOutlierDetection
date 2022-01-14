@@ -1,6 +1,6 @@
-# TandemOutlierDetection
+# Tandem Outlier Detectors for Decentralized Data
 
-Code for the paper *Tandem Outlier Detection* currently under review at IJCAI2022.
+Code for the paper *Tandem Outlier Detectors for Decentralized Data* currently under review at IJCAI2022.
 
 ## Dependencies
 
@@ -23,5 +23,5 @@ Synthetic data with partition outliers
 - `bash bash/start_experiment.sh -t partition_outlier -r 20 -R 150`
 
 Power tool data from the study
-- `bash bash/start_experiment.sh -t ipek -r 20 -R 10`
+- `bash bash/start_experiment.sh -t powertool -r 20 -R 10`
   - Please note that the data for this experiment is not publicly available yet. We will publish the data on UCI after paper acceptance.
