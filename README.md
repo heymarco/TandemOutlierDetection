@@ -4,7 +4,7 @@ Code for the paper *Tandem Outlier Detection* currently under review at IJCAI202
 
 ## Dependencies
 
-`conda env create -f environment.yml` will create a conda environment named `TandemOutlierDetection` with all necessary dependencies installed
+`conda env create -f environment.yml` will create a conda environment named `TandemOutlierDetection` with all necessary dependencies installed.
 - use `conda activate TandemOutlierDetection` to activate the environment.
 
 If automatic installation fails, you can also install the dependencies by hand:
@@ -24,4 +24,4 @@ Synthetic data with partition outliers
 
 Power tool data from the study
 - `bash bash/start_experiment.sh -t ipek -r 20 -R 10`
-  - Please note that the data is not publicly available yet. We will publish the data on UCI after paper acceptance.
+  - Please note that the data for this experiment is not publicly available yet. We will publish the data on UCI after paper acceptance.

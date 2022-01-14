@@ -27,19 +27,19 @@ def plot_partition_outlier():
     grouped_by_exp_index = raw_data.sort_values(by="repetition").groupby(by="repetition")
     for tpl in grouped_by_exp_index:
         df = tpl[1]
-        exp_results = []
+
         grouped_by_client = df.groupby(by="client")
         os_federated = [
             data[1]["os_federated"].to_numpy() for data in grouped_by_client
         ]
-        os_star, probabilities = server_evaluation(os_federated)
+        os_star, probabilities = server_evaluation(os_federated, b=10)
 
         alpha = 0.05
         print(os_star)
         print(probabilities)
 
         fig, axes = plt.subplots(2, 1, figsize=(4, 3))
-        sns.kdeplot(np.concatenate(os_star), color="black", lw=5, alpha=0.3, label="overall", ax=axes[0])
+        #sns.kdeplot(np.concatenate(os_star), color="black", lw=5, alpha=0.3, label="overall", ax=axes[0])
 
         for i, outlier_scores in enumerate(os_star):
             color = sns.cubehelix_palette(n_colors=2)[0] if probabilities[i] > alpha else sns.cubehelix_palette(n_colors=2)[-1]

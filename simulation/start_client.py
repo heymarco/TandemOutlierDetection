@@ -16,14 +16,14 @@ from src.federated_learning.data.ipek_data_loader import load_ipek_partition
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-type", type=str,
-                        choices=["ipek", "local/global", "partition_outlier"],
+                        choices=["powertool", "local/global", "partition_outlier"],
                         required=True, help="The clients to start")
     parser.add_argument("-client_index", type=int, required=True, help="The index of clients")
     parser.add_argument("-exp_index", type=int, required=True, help="The experiment index")
     parser.add_argument("-num_reps", type=int, required=True, help="The number of experiment repetitions")
     args = parser.parse_args()
 
-    if args.type == "ipek":
+    if args.type == "powertool":
         train, test = load_ipek_partition(args.client_index)
         client = IpekClient(trainloader=train, testloader=test, client_index=args.client_index)
     if args.type == "local/global":

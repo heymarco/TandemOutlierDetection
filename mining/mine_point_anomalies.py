@@ -10,12 +10,13 @@ from matplotlib.lines import Line2D
 import matplotlib as mpl
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['text.latex.preamble'] = r'\usepackage{times}'
+mpl.rcParams['text.latex.preamble'] = r'\usepackage{nicefrac}'
 mpl.rc('font', family='serif')
 
 sys.path.insert(0, ".")
-from src.helper import get_point_outliers, ipek_split_ratios
+from src.helper import get_point_outliers, power_tool_split_ratios
 
-percentile = 99
+percentile = 98
 nrows = 3
 ncols = 3
 
@@ -33,7 +34,7 @@ def plot_outlier_windows(for_device: int):
 
     fig, axes = plt.subplots(nrows, ncols, sharex=True)
 
-    data_dir = os.path.join("data", "ipek")
+    data_dir = os.path.join("data", "powertool")
     assert os.path.exists(data_dir), "The directory '{}' does not exist".format(data_dir)
     filenames = os.listdir(data_dir)
     filenames = sorted(filenames)
@@ -83,7 +84,7 @@ def plot_outlier_windows(for_device: int):
 
 
 def plot_point_anomalies():
-    filepath = os.path.join("results", "ipek_results.csv")
+    filepath = os.path.join("results", "result.csv")
     raw_data = pd.read_csv(filepath)
 
     num_rows = 4
@@ -92,7 +93,6 @@ def plot_point_anomalies():
     grouped_by_exp_index = raw_data.groupby(by="repetition")
     for tpl in grouped_by_exp_index:
         df = tpl[1]
-        exp_results = []
         grouped_by_client = df.groupby(by="client")
         os_federated = [
             data[1]["os_federated"].to_numpy() for data in grouped_by_client
@@ -115,8 +115,7 @@ def plot_point_anomalies():
             local_outliers, global_outliers = get_point_outliers(os_ondevice=oso,
                                                                  os_federated=osf,
                                                                  percentile=percentile,
-                                                                 is_outlier_confidence=0.99,
-                                                                 classification_confidence=0.99)
+                                                                 percentile_federated=percentile)
             # plot inliers
             all_outliers = np.logical_or(
                 local_outliers,
@@ -129,8 +128,6 @@ def plot_point_anomalies():
                 device_labels == "benign",
                 device_labels == "unlabeled"
             )
-
-            outlier_ground_truth = np.invert(inlier_ground_truth)
 
             x = np.arange(len(oso))
             thresh = np.percentile(osf, percentile)
@@ -182,7 +179,7 @@ def plot_point_anomalies():
 
 
 def get_outlier_indices():
-    filepath = os.path.join("results", "ipek_results.csv")
+    filepath = os.path.join("results", "result.csv")
     raw_data = pd.read_csv(filepath)
     grouped_by_exp_index = raw_data.groupby(by="repetition")
     for tpl in grouped_by_exp_index:
@@ -204,7 +201,8 @@ def get_outlier_indices():
         for cid, (osf, oso, device_labels) in enumerate(zip(os_federated, os_ondevice, labels)):
             local_outliers, global_outliers = get_point_outliers(os_ondevice=oso,
                                                                  os_federated=osf,
-                                                                 percentile=percentile)
+                                                                 percentile=percentile,
+                                                                 percentile_federated=percentile)
             lo.append(list(local_outliers))
             go.append(list(global_outliers))
 
@@ -212,7 +210,7 @@ def get_outlier_indices():
 
 
 def plot_data(for_device: int):
-    data_dir = os.path.join("data", "ipek")
+    data_dir = os.path.join("data", "powertool")
     assert os.path.exists(data_dir), "The directory '{}' does not exist".format(data_dir)
     filenames = os.listdir(data_dir)
     filenames = sorted(filenames)
@@ -237,7 +235,7 @@ def plot_data(for_device: int):
 def plot_global_outlier(for_device: int, dims = ["batC"], figsize = (4, 3)):
     palette = sns.cubehelix_palette(3)
     lo, go = get_outlier_indices()
-    data_dir = os.path.join("data", "ipek")
+    data_dir = os.path.join("data", "powertool")
     assert os.path.exists(data_dir), "The directory '{}' does not exist".format(data_dir)
     filenames = os.listdir(data_dir)
     filenames = sorted(filenames)
@@ -273,7 +271,7 @@ def plot_global_outlier(for_device: int, dims = ["batC"], figsize = (4, 3)):
                 relevant_data = file[col]
                 x, y = __get_window__(relevant_data, outlier_index=i, stride=25, window_size=100)
                 for ax in axes:
-                    ax.plot(x, y, color=color, alpha=alpha, zorder=zorder)
+                    ax.plot(x / 100.0, y, color=color, alpha=alpha, zorder=zorder)
         custom_lines = [Line2D([0], [0], color=palette[0]),
                         Line2D([0], [0], color=palette[1]),
                         Line2D([0], [0], color=palette[2])]
@@ -281,9 +279,9 @@ def plot_global_outlier(for_device: int, dims = ["batC"], figsize = (4, 3)):
                       loc='lower center', frameon=False, ncol=4)
         fig = plt.gcf()
         fig.set_size_inches(figsize[0], figsize[1])
-        axes[1].set_xlabel("time")
-        axes[0].set_ylabel("current")
-        axes[1].set_ylabel("current")
+        axes[1].set_xlabel(r"time [s]")
+        axes[0].set_ylabel("current [A]")
+        axes[1].set_ylabel("current [A]")
         plt.tight_layout()
         plt.show()
 
@@ -292,4 +290,3 @@ if __name__ == '__main__':
     device = 15
     # plot_data(for_device=device)
     plot_global_outlier(device)
-    # plot_point_anomalies()

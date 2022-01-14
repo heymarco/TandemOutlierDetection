@@ -123,32 +123,27 @@ def plot_kde_partition_outliers():
 
 def latex_table_partition_outliers():
     data = pd.read_csv(os.path.join("results", "result.csv"))
-    exp = np.floor(data["repetition"] / 50 + 2)
-    nobs = np.power(10, exp)
-    deviation = (data["repetition"] % 5) / 4.0
-    pattern_std = 0.1
-    deviation_std = deviation * pattern_std
-    data["shift"] = deviation_std
+    exp = np.floor(5 - data["repetition"] / 50)
+    nobs = np.power(10, exp).astype(int)
+    deviation = round((data["repetition"] % 5) / 4.0, 2)
+    data["shift"] = deviation
     data["$|DB|$"] = nobs
-    print(np.unique(deviation))
-    bs = [1.0, 10.0, 100.0, 1000, "sqrt"]
+    bs = [1, 10, 100, 1000, 10000]
     table_data = []
     data.sort_values(by=["$|DB|$"], inplace=True)
     for DB, db_data in data.groupby("$|DB|$"):
         for b in bs:
-            row = [DB, b if b != "sqrt" else r"$\sqrt{{|DB|}}$"]
-            for key, d in db_data.groupby(by="shift"):
-                os_federated = [
-                    c_data["os_federated"].to_numpy() for _, c_data in d.groupby(by="client")
-                ]
-                res = server_evaluation(os_federated, b)[1][0]
-                row.append(round(res, 2))
-            table_data.append(row)
-
-    columns = list(np.unique(deviation))
-    columns.insert(0, r"$|DB|$")
-    columns.insert(1, "b")
-    df = pd.DataFrame(table_data, columns=columns)
+            for shift, shift_data in db_data.groupby(by="shift"):
+                for rep, rep_data in shift_data.groupby("repetition"):
+                    row = [DB, b if b != "sqrt" else r"$\sqrt{{|DB|}}$", shift, rep]
+                    os_federated = [
+                        c_data["os_federated"].to_numpy() for _, c_data in rep_data.groupby(by="client")
+                    ]
+                    res = server_evaluation(os_federated, b)[1][0]
+                    row.append(round(res, 2))
+                    table_data.append(row)
+    temp_df = pd.DataFrame(table_data, columns=["$|DB|$", "$b$", "shift", "rep", "$p$-value"])
+    df = temp_df.pivot(columns="shift", index=["$|DB|$", "$b$", "rep"]).groupby(["$|DB|$", "$b$"]).mean().round(2).reset_index()
     print(df.to_latex(index=False, escape=False))
 
 

@@ -44,7 +44,7 @@ def server_evaluation(os_federated: np.ndarray, b = "sqrt"):
         arr = np.sort(arr)
         db = len(arr)
         aggregation_size = int(db / np.ceil(db / b))
-        print(b, db, aggregation_size)
+        # print(b, db, aggregation_size)
         dim1 = int(len(arr) / aggregation_size)
         dim2 = aggregation_size
         arr = arr[:dim1*dim2]
@@ -110,7 +110,7 @@ def extract_features_in_sliding_window(df: pd.DataFrame, window_size: int = 20, 
     return features
 
 
-ipek_split_ratios = [
+power_tool_split_ratios = [
     5600 / 14200,
     6800 / 10500,
     8700 / 19000,

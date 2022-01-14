@@ -13,11 +13,11 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 sys.path.insert(0, ".")
-from src.helper import extract_features_in_sliding_window, ipek_split_ratios
+from src.helper import extract_features_in_sliding_window, power_tool_split_ratios
 
 
 def extract_features(window_size: int = 20, stride: int = 20):
-    data_dir = os.path.join("data", "ipek")
+    data_dir = os.path.join("data", "powertool")
     assert os.path.exists(data_dir), "The directory '{}' does not exist".format(data_dir)
     for filename in os.listdir(data_dir):
         if not filename.endswith(".csv"):
@@ -34,7 +34,7 @@ def extract_features(window_size: int = 20, stride: int = 20):
 
 
 def plot_ipek():
-    data_dir = os.path.join("data", "ipek")
+    data_dir = os.path.join("data", "powertool")
     assert os.path.exists(data_dir), "The directory '{}' does not exist".format(data_dir)
     filenames = os.listdir(data_dir)
     filenames = sorted(filenames)
@@ -92,7 +92,7 @@ class IpekDataset(torch.utils.data.Dataset):
 
 def __load_raw_data(index: int, seq_len=100):
     log(logging.INFO, "Loading data for device {} ...".format(index))
-    data_dir = os.path.join("data", "ipek")
+    data_dir = os.path.join("data", "powertool")
     assert os.path.exists(data_dir), "The directory '{}' does not exist".format(data_dir)
     filenames = os.listdir(data_dir)
     filenames = sorted(filenames)
@@ -130,7 +130,7 @@ def __load_raw_data(index: int, seq_len=100):
 
 def __load_data__(index: int):
     log(logging.INFO, "Loading data for device {} ...".format(index))
-    data_dir = os.path.join("data", "ipek", "features")
+    data_dir = os.path.join("data", "powertool", "features")
     assert os.path.exists(data_dir), "The directory '{}' does not exist".format(data_dir)
     filenames = os.listdir(data_dir)
     filenames = sorted(filenames)
