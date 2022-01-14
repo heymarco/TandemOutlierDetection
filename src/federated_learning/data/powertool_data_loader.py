@@ -33,7 +33,7 @@ def extract_features(window_size: int = 20, stride: int = 20):
         features.to_csv(feature_file_path, sep=";")
 
 
-def plot_ipek():
+def plot_powertool():
     data_dir = os.path.join("data", "powertool")
     assert os.path.exists(data_dir), "The directory '{}' does not exist".format(data_dir)
     filenames = os.listdir(data_dir)
@@ -55,7 +55,7 @@ def plot_ipek():
     plt.show()
 
 
-class IpekRawDataset(torch.utils.data.Dataset):
+class PowertoolRawDataset(torch.utils.data.Dataset):
 
     def __init__(self, data, transform, labels=False, seq_len=20, jump=10):
         self.data = data
@@ -73,7 +73,7 @@ class IpekRawDataset(torch.utils.data.Dataset):
         return sample, "unlabeled"
 
 
-class IpekDataset(torch.utils.data.Dataset):
+class PowertoolDataset(torch.utils.data.Dataset):
 
     def __init__(self, data, transform, labels=False):
         self.data = data
@@ -108,17 +108,6 @@ def __load_raw_data(index: int, seq_len=100):
         file = file[file["batC"] > 0.6]
         file = file.diff().dropna()
         data_columns = file.columns
-
-        # if index < 15:
-        #     file = pd.concat([
-        #         file.iloc[int(len(file) * ipek_split_ratios[index]):],  # Schrauben
-        #         # file.iloc[:int(len(file) * ipek_split_ratios[index])].sample(2),
-        #     ])
-        # else:
-        #     file = pd.concat([
-        #         file.iloc[:int(len(file) * ipek_split_ratios[index])],  # Bohren
-        #         # file.iloc[int(len(file) * ipek_split_ratios[index]):].sample(2),
-        #     ])
         x = file[data_columns].values  # returns a numpy array
         x_scaled = StandardScaler().fit_transform(x)
         x_scaled[np.isnan(x_scaled)] = 0.0
@@ -143,17 +132,6 @@ def __load_data__(index: int):
         path_to_file = os.path.join(data_dir, filename)
         file = pd.read_csv(path_to_file, sep=";", index_col=0)
         data_columns = file.columns
-
-        # if index == 15:
-        #     file = pd.concat([
-        #         file.iloc[int(len(file) * ipek_split_ratios[index]):],  # Schrauben
-        #         # file.iloc[:int(len(file) * ipek_split_ratios[index])].sample(2),
-        #     ])
-        # else:
-        #     file = pd.concat([
-        #         file.iloc[:int(len(file) * ipek_split_ratios[index])],  # Bohren
-        #         # file.iloc[int(len(file) * ipek_split_ratios[index]):].sample(2),
-        #     ])
         x = file[data_columns].values  # returns a numpy array
         x_scaled = StandardScaler().fit_transform(x)
         x_scaled[np.isnan(x_scaled)] = 0.0
@@ -162,26 +140,26 @@ def __load_data__(index: int):
         return data_normed
 
 
-def __ipek_data_loader__(index, batch_size: int = 32):
+def __powertool_data_loader__(index, batch_size: int = 32):
     data = __load_data__(index)
     base_transforms_list = [transforms.ToTensor()]
     base_transform = transforms.Compose(base_transforms_list)
-    dataset = IpekDataset(data=data.to_numpy(), transform=base_transform)
+    dataset = PowertoolDataset(data=data.to_numpy(), transform=base_transform)
     return (torch.utils.data.DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True, drop_last=True),
             torch.utils.data.DataLoader(dataset=dataset, batch_size=batch_size, shuffle=False, drop_last=True))
 
 
-def __ipek_raw_loader__(index, batch_size: int = 32):
+def __powertool_raw_loader__(index, batch_size: int = 32):
     data = __load_raw_data(index)
     base_transforms_list = [transforms.ToTensor()]
     base_transform = transforms.Compose(base_transforms_list)
-    dataset = IpekRawDataset(data=data.to_numpy(), transform=base_transform)
+    dataset = PowertoolRawDataset(data=data.to_numpy(), transform=base_transform)
     return (torch.utils.data.DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True, drop_last=True),
             torch.utils.data.DataLoader(dataset=dataset, batch_size=batch_size, shuffle=False, drop_last=True))
 
 
-def load_ipek_partition(index: int, *args, **kwargs):
-    return __ipek_data_loader__(index)
+def load_powertool_partition(index: int, *args, **kwargs):
+    return __powertool_data_loader__(index)
 
 
 if __name__ == '__main__':

@@ -9,8 +9,8 @@ sys.path.insert(0, ".")
 from src.federated_learning.clients.synthetic_client import SyntheticClient
 from src.federated_learning.data.synthetic_data_loader import load_synthetic_partition
 
-from src.federated_learning.clients.ipek_client import IpekClient
-from src.federated_learning.data.ipek_data_loader import load_ipek_partition
+from src.federated_learning.clients.powertool_client import PowertoolClient
+from src.federated_learning.data.powertool_data_loader import load_powertool_partition
 
 
 if __name__ == '__main__':
@@ -24,8 +24,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.type == "powertool":
-        train, test = load_ipek_partition(args.client_index)
-        client = IpekClient(trainloader=train, testloader=test, client_index=args.client_index)
+        train, test = load_powertool_partition(args.client_index)
+        client = PowertoolClient(trainloader=train, testloader=test, client_index=args.client_index)
     if args.type == "local/global":
         train, test = load_synthetic_partition(index=args.client_index, experiment=args.type,
                                                nobs=1000, **args.__dict__)

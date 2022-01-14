@@ -27,10 +27,10 @@ class OneLayerAutoencoder(nn.Module):
         return x
 
 
-class IpekClient(fl.client.NumPyClient):
+class PowertoolClient(fl.client.NumPyClient):
 
     def __init__(self, trainloader: DataLoader, testloader: DataLoader, client_index: int):
-        super(IpekClient, self).__init__()
+        super(PowertoolClient, self).__init__()
         self.federated_detector = OneLayerAutoencoder()
         self.ondevice_detector = OneLayerAutoencoder()
         self.trainloader = trainloader

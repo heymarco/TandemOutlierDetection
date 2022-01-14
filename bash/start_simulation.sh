@@ -11,7 +11,7 @@ esac
 done
 
 num_clients=0
-if [ "$type" == "ipek" ];
+if [ "$type" == "powertool" ];
 then
   num_clients=15
 elif [ "$type" == "local/global" ];
