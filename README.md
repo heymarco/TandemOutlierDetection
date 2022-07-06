@@ -23,5 +23,5 @@ Synthetic data with partition outliers
 - `bash bash/start_experiment.sh -t partition_outlier -r 20 -R 150`
 
 Power tool data from the study
+- You can download the data from this link: https://drive.google.com/drive/folders/1A88h3p-1LY_H2JWZMAU9Cmg7iSaqHUEw?usp=sharing
 - `bash bash/start_experiment.sh -t powertool -r 20 -R 10`
-  - Please note that the data for this experiment is not publicly available yet. We will publish the data on UCI after paper acceptance.
