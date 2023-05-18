@@ -1,8 +1,6 @@
 # Tandem Outlier Detectors for Decentralized Data
 
-Code for the short paper *Tandem Outlier Detectors for Decentralized Data* published at SSDBM22.
-
-https://dl.acm.org/doi/10.1145/3538712.3538748
+Code for the short paper [*Tandem Outlier Detectors for Decentralized Data*](https://dl.acm.org/doi/10.1145/3538712.3538748) published at SSDBM22.
 
 ## Abstract
 
