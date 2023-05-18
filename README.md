@@ -1,6 +1,6 @@
 # Tandem Outlier Detectors for Decentralized Data
 
-Check out our short paper [*Tandem Outlier Detectors for Decentralized Data*](https://dl.acm.org/doi/10.1145/3538712.3538748) published at SSDBM22. You can access the souce code [here](https://github.com/heymarco/TandemOutlierDetection)
+Check out our short paper [*Tandem Outlier Detectors for Decentralized Data*](https://dl.acm.org/doi/10.1145/3538712.3538748) published at SSDBM22. You can access the souce code [here](https://github.com/heymarco/TandemOutlierDetection).
 
 ## Abstract
 
