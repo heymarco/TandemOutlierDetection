@@ -2,6 +2,11 @@
 
 Code for the short paper *Tandem Outlier Detectors for Decentralized Data* published at SSDBM22.
 
+## Abstract
+
+Today, the collection of decentralized data is a common scenario: smartphones store users' messages locally, smart meters collect energy consumption data, and modern power tools monitor operator behavior. We identify different types of outliers in such data: local, global, and partition outliers}. They contain valuable information, for example, about mistakes in operation. However, existing outlier detection approaches cannot distinguish between those types. Thus, we propose a "tandem" technique to join "local" and "federated" outlier detectors. Our core idea is to combine outlier detection on a single device with latent information about devices' data to discriminate between different outlier types. To the best of our knowledge, our method is the first to achieve this.
+We evaluate our approach on publicly available synthetic and real-world data that we collect in a study with 15 participants operating power tools.
+
 ## Dependencies
 
 `conda env create -f environment.yml` will create a conda environment named `TandemOutlierDetection` with all necessary dependencies installed.
