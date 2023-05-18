@@ -1,6 +1,6 @@
 # Tandem Outlier Detectors for Decentralized Data
 
-Code for the paper *Tandem Outlier Detectors for Decentralized Data* currently under review at IJCAI2022.
+Code for the short paper *Tandem Outlier Detectors for Decentralized Data* published at SSDBM22.
 
 ## Dependencies
 
